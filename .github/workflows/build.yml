@@ -42,10 +42,37 @@ jobs:
           yes | sdkmanager --licenses || true
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" "cmake;3.22.1"
 
+      - name: Prepare Telegram API keys & Firebase config
+        run: |
+          echo "APP_ID=6" >> local.properties
+          echo "APP_HASH=eb06d4abfb49dc3eeb1aeb98ae0f581e" >> local.properties
+          if [ ! -f TMessagesProj_App/google-services.json ]; then
+            cat << 'EOF' > TMessagesProj_App/google-services.json
+          {
+            "project_info": {
+              "project_number": "123456789000",
+              "project_id": "telegram-dummy",
+              "storage_bucket": "://appspot.com"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:123456789000:android:1234567890abcdef",
+                  "android_client_info": {
+                    "package_name": "org.telegram.messenger.beta"
+                  }
+                },
+                "api_key": [{ "current_key": "AIzaSyDummyKeyForBuild1234567890" }]
+              }
+            ]
+          }
+          EOF
+          fi
+
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      - name: Build Debug APK (arm64-v8a)
+      - name: Build Debug APK
         env:
           GRADLE_OPTS: "-Xmx4g -Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.workers.max=2"
         run: ./gradlew :TMessagesProj_App:assembleAfatDebug --no-daemon --max-workers=2 --stacktrace
