@@ -1,4 +1,4 @@
-name: Build APK
+name: Build Telegram Mod APK
 
 on:
   workflow_dispatch:
@@ -8,23 +8,60 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 180
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: false
+          dotnet: true
+          haskell: true
+          large-packages: true
+          swap-storage: false
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
+          distribution: temurin
           java-version: '17'
-          distribution: 'temurin'
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+      - name: Install SDK packages
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0" "ndk;27.2.12479018" "cmake;3.22.1"
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('**/*.gradle*', 'gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Build APK
+        run: ./gradlew :TMessagesProj_App:assembleAfatDebug --stacktrace
+
+      - name: Collect APK
+        run: |
+          mkdir -p out
+          find TMessagesProj_App/build/outputs/apk -name "*.apk" -exec cp {} out/ \;
+          ls -la out
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: telegram-mod-apk
+          path: out/*.apk
+          if-no-files-found: error
